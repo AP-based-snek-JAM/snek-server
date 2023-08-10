@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+use std::rc::{ Weak,Rc };
+
 pub struct Config {
     pub field_width:usize,
     pub field_heigth:usize,
@@ -39,12 +41,18 @@ impl Game{
                 }
             }
         }
-        self.snekos.borrow().iter().for_each(|snek|snek.slither())
+        self.snekos.borrow().iter().for_each(|snek|{ 
+            if *snek.alive.borrow() == false {return}
+            snek.slither();
+            let snek_coords = dbg!(snek.coords.borrow());
+            if snek_coords.x>=self.config.field_width || snek_coords.y>=self.config.field_heigth {  
+            }
+        })
     }
     fn spawn_fruit(){
         //nomnom
     }
-    fn add_player(&self,nickname:String,player_soket:String){
+    pub fn add_player(&self,nickname:String,player_soket:String){
         self.snekos.borrow_mut().push(Sneko::new(nickname,player_soket))
     }
 }
@@ -55,7 +63,7 @@ pub enum Direction{
     Left,
     Right
 }
-
+#[derive(Debug)]
 pub struct Coords {
     pub x:usize,
     pub y:usize,
@@ -67,19 +75,27 @@ pub struct Sneko {
     pub coords:RefCell<Coords>,
     pub direction:RefCell<Direction>,
     length:usize,
-    pub alive:bool
+    pub alive:RefCell<bool>
 }
 
 impl Sneko {
     pub fn new(nickname:String,player_soket:String)-> Sneko{
-        Sneko {nickname,player_soket,coords:RefCell::new(Coords{x:0,y:0}), direction: RefCell::new(Direction::Right),length:1,alive:false}    
+        Sneko {nickname,player_soket,coords:RefCell::new(Coords{x:0,y:0}), direction: RefCell::new(Direction::Right),length:1,alive:RefCell::new(true)}    
     }
     pub fn slither(&self){
         match *self.direction.borrow() {
-            Direction::Up => { self.coords.borrow_mut().y+=1 },
-            Direction::Down =>{ self.coords.borrow_mut().y-=1 },
-            Direction::Left =>{ self.coords.borrow_mut().x-=1 },
-            Direction::Right =>{ self.coords.borrow_mut().x+=1 },
+            Direction::Up => {self.coords.borrow_mut().y+=1},
+            Direction::Down =>{  
+                let mut coords_borrow = self.coords.borrow_mut(); 
+                if coords_borrow.y > 0 {coords_borrow.y-=1} 
+            },
+            Direction::Left =>{ 
+                let mut coords_borrow = self.coords.borrow_mut(); 
+                if coords_borrow.x > 0 {coords_borrow.x-=1} 
+            },
+            Direction::Right =>{ 
+                self.coords.borrow_mut().x+=1 
+            },
         }
         //wiggly wiggle
     }
