@@ -16,13 +16,14 @@ fn run(cli:Cli)-> Result<(),Box<dyn Error>>{
     let game_config=sneko_engine::Config::new(cli.width,cli.heigth,cli.fruit_count);
     let game = sneko_engine::Game::new(game_config);
     game.print_field();
+    game.tick();
     return Ok(());
 }
 
 
 
 #[derive(Parser)]
-#[command(name = "Sneko", author = "Hejdula", version = "1.0",about = "Does snakey things")]
+#[command(name = "Sneko", author = "Hejdula", version,about = "Does snakey things")]
 struct Cli {
     #[arg(short='x', long, default_value_t=10)]
     width: usize,
