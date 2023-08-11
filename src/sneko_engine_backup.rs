@@ -12,7 +12,6 @@ impl Config {
         Config{field_width,field_heigth,fruit_count}
     }
 }
-#[derive(Clone,Copy,Debug,PartialEq)]
 pub enum Point {
     Empty,
     Sneko(usize),
@@ -20,7 +19,7 @@ pub enum Point {
 }
 pub struct Game {
     soket: String,
-    pub field: RefCell<Box<[Box<[Point]>]>>,
+    field: RefCell<Box<[Box<[usize]>]>>,
     config: Config,
     snekos:RefCell<Vec<Sneko>>,
     fruits:RefCell<Vec<Coords>>
@@ -30,7 +29,7 @@ impl Game{
         Game {
             soket: String::new(),
             field: RefCell::new(vec![
-                vec![Point::Empty;config.field_width].into_boxed_slice();config.field_heigth
+                vec![0;config.field_width].into_boxed_slice();config.field_heigth
             ].into_boxed_slice()), 
             config,
             snekos:RefCell::new(vec![]),
@@ -38,76 +37,44 @@ impl Game{
         }
     }
     pub fn print_field(&self){
-        self.field.borrow().iter().for_each(|row|{ 
-            println!("");
-            row.iter().for_each(|point|{
-                match point {
-                    Point::Empty=>{print!("░")} //⎕
-                    Point::Fruit=>{print!("█")}
-                    Point::Sneko(value)=>{print!("▓")}//▩
-                }
-            })
-        })
-    }
-    pub fn start(&self){
-
+        self.field.borrow().iter().for_each(|row|println!("{:?}",row));
     }
     pub fn tick(&self){
-        if self.number_of_alive_snekos() == 0 {
-            println!("GAME OVER");
-            return
-        }
-        //temporary
-        
-        //temporary
+        self.update_field_values();
         self.decrease_field_values();
         self.slither_alive_snekos();
-        self.handle_movement();
-        self.print_field();
+        self.update_field_values();
     }
     fn number_of_alive_snekos(&self) -> usize{
         let mut result:usize = 0;
         self.snekos.borrow().iter().for_each(|snek|if let true = *snek.alive.borrow(){result+=1});
         result
     }
-    fn handle_movement(&self){ 
+    fn update_field_values(&self){ 
         self.snekos.borrow().iter().for_each(|snek|{
-            let mut dies = false;
             match *snek.alive.borrow(){
                 true => {
                     let snek_coords = snek.coords.borrow_mut();
-                    let point = &mut self.field.borrow_mut()[snek_coords.y][snek_coords.x];
-                    match point{
-                        Point::Empty=>{
-                            *point = Point::Sneko(*snek.length.borrow())}
-                        Point::Fruit => {
-                            *point = Point::Sneko(*snek.length.borrow())}
-                        Point::Sneko(_) => {dies = true;}
-                    }
+                    self.field.borrow_mut()[snek_coords.y][snek_coords.x] = *snek.length.borrow();
                 }
                 false => {}
-            }
-            if dies {*snek.alive.borrow_mut()=false}
-        })  
+        }})  
     }
     fn decrease_field_values(&self){
         self.field.borrow_mut().iter_mut().for_each(|row|{
-            row.iter_mut().for_each(|point|{
-                if let Point::Sneko(value) = point {
-                    match value {
-                        0|1 => {*point = Point::Empty}
-                        x => {*x -= 1}
-                    } 
+            row.iter_mut().for_each(|value|{
+                if *value != 0 {
+                    *value -= 1;
                 }
             })
-        })
+        });
     }
     fn slither_alive_snekos(&self){    
         self.snekos.borrow().iter().for_each(|snek|{ 
             if *snek.alive.borrow() == false {return}
             snek.slither();
             let snek_coords = snek.coords.borrow();
-            if snek_coords.x>=self.config.field_width || snek_coords.y>=self.config.field_heigth{    
+            if snek_coords.x>=self.config.field_width || snek_coords.y>=self.config.field_heigth || self.field.borrow()[snek_coords.y][snek_coords.x] > 0 {    
                 *snek.alive.borrow_mut() = false;
             }
         })
@@ -119,7 +86,7 @@ impl Game{
                 x: rnd.gen_range(0..self.config.field_width),
                 y: rnd.gen_range(0..self.config.field_heigth)
             };
-            if let Point::Fruit=self.field.borrow()[rand_coords.y][rand_coords.x]{
+            if self.field.borrow()[rand_coords.y][rand_coords.x]==0{
                 self.fruits.borrow_mut().push(rand_coords)
             }
         }

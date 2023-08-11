@@ -1,7 +1,8 @@
 use clap::Parser;
 use std::error::Error;
+use std::thread::sleep;
+use std::time::Duration;
 mod sneko_engine;
-
 
 fn main() {
     let cli = Cli::parse();
@@ -16,8 +17,7 @@ fn run(cli:Cli)-> Result<(),Box<dyn Error>>{
     let game_config=sneko_engine::Config::new(cli.width,cli.heigth,cli.fruit_count);
     let game = sneko_engine::Game::new(game_config);
     game.add_player("Hejdula".to_string(),"soket".to_string());
-    game.print_field();
-    game.tick();
+    (1..13).for_each(|_|{game.tick();println!("");sleep(Duration::from_secs(1))});
     return Ok(());
 }
 
