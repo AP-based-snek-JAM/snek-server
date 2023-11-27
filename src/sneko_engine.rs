@@ -1,15 +1,14 @@
-use std::cell::RefCell;
 use rand::Rng;
 //use std::rc::{ Weak,Rc };
 
 pub struct Config {
-    pub field_width:usize,
-    pub field_heigth:usize,
+    pub grid_width:usize,
+    pub grid_heigth:usize,
     pub fruit_count:usize,
 }
 impl Config {
-    pub fn new(field_width:usize,field_heigth:usize,fruit_count:usize) -> Config {
-        Config{field_width,field_heigth,fruit_count}
+    pub fn new(grid_width:usize,grid_heigth:usize,fruit_count:usize) -> Config {
+        Config{grid_width,grid_heigth,fruit_count}
     }
 }
 #[derive(Clone,Copy,Debug,PartialEq)]
@@ -20,7 +19,7 @@ pub enum Point {
 }
 pub struct Game {
     soket: String,
-    pub field: Box<[Box<[Point]>]>,
+    pub grid: Box<[Box<[Point]>]>,
     config: Config,
     snekos:Vec<Sneko>,
     fruits:Vec<Coords>
@@ -29,16 +28,16 @@ impl Game{
     pub fn new(config:Config) -> Game {
         Game {
             soket: String::new(),
-            field: vec![
-                vec![Point::Empty;config.field_width].into_boxed_slice();config.field_heigth
+            grid: vec![
+                vec![Point::Empty;config.grid_width].into_boxed_slice();config.grid_heigth
             ].into_boxed_slice(), 
             config,
             snekos:vec![],
             fruits:vec![]
         }
     }
-    pub fn print_field(&self){
-        self.field.iter().for_each(|row|{ 
+    pub fn print_grid(&self){
+        self.grid.iter().for_each(|row|{ 
             println!("");
             row.iter().for_each(|point|{
                 match point {
@@ -52,12 +51,12 @@ impl Game{
     pub fn start(&mut self){
         self.spawn_snekos();
         //self.spawn_fruits();
-        self.update_field_values();
+        self.update_grid_values();
     }
     pub fn spawn_snekos(&mut self){
         let number_of_snekos = self.snekos.len();
-        self.snekos.iter_mut().enumerate().for_each(|(i,snek)|{
-            snek.alive=true;
+        self.snekos.iter_mut().enumerate().for_each(|(i,sneko)|{
+            sneko.alive=true;
             let side_direction = match i%4{
                 0 => {Direction::Left}
                 1 => {Direction::Right}
@@ -65,8 +64,8 @@ impl Game{
                 3 => {Direction::Down}
                 _ => unreachable!()
             };
-            snek.prev_direction = side_direction.opposite();
-            snek.direction = side_direction.opposite();
+            sneko.prev_direction = side_direction.opposite();
+            sneko.direction = side_direction.opposite();
             let snekos_on_side = (number_of_snekos/4) + {
                 match i%4 <= number_of_snekos%4 {
                     true => {1}
@@ -74,36 +73,36 @@ impl Game{
                 }
             };
             let nth_on_side=1+(i/4);
-            let spacing = self.config.field_width as f32 / ((snekos_on_side+1) as f32);
-            snek.coords = {match side_direction {
+            let spacing = self.config.grid_width as f32 / ((snekos_on_side+1) as f32);
+            sneko.coords = {match side_direction {
                 Direction::Up => {
-                    Coords{x:(nth_on_side as f32 * spacing).ceil() as usize,y:self.config.field_heigth-1}}
+                    Coords{x:(nth_on_side as f32 * spacing).ceil() as usize,y:self.config.grid_heigth-1}}
                 Direction::Down => {
                     Coords{x:(nth_on_side as f32 * spacing).ceil() as usize,y:0}}
                 Direction::Left => {
                     Coords{x:0,y:(nth_on_side as f32 * spacing).ceil() as usize}}
                 Direction::Right => {
-                    Coords{x:self.config.field_width-1,y:(nth_on_side as f32 * spacing).ceil() as usize}}
+                    Coords{x:self.config.grid_width-1,y:(nth_on_side as f32 * spacing).ceil() as usize}}
             }};
-            println!("{:?},snekos on side:{},nth_on_side:{},{},{:?}",side_direction,snekos_on_side,nth_on_side,spacing,snek.coords)
+            println!("{:?},snekos on side:{},nth_on_side:{},{},{:?}",side_direction,snekos_on_side,nth_on_side,spacing,sneko.coords)
         });
     }
         
-    fn update_field_values(&mut self){ 
+    fn update_grid_values(&mut self){ 
         self.snekos.iter().for_each(|snek|{
             if let true = snek.alive{
-                self.field[snek.coords.y][snek.coords.x] = Point::Sneko(snek.length);    
+                self.grid[snek.coords.y][snek.coords.x] = Point::Sneko(snek.length);    
             }
        })
     }
 
-    pub fn change_player_direction(&mut self,nickname:String,direction:Direction){
-        //let reference_to_sneko: Option<&Sneko> = self.snekos.iter().find(|snek| snek.nickname == nickname);
-        //if let Some(snek) = self.snekos.iter().find(|snek| snek.nickname == nickname){
-        //    if snek.prev_direction.opposite() != direction{
-        //        snek.direction = direction;
-        //    }
-        //}
+    pub fn change_player_direction(&mut self,player_id:usize,direction:Direction){
+        //let reference_to_sneko: Option<&Sneko> = self.snekos.iter().find(|snek| snek.player_id == player_id);
+        if let Some(sneko) = self.snekos.iter_mut().find(|snek| snek.player_id == player_id){
+            if sneko.prev_direction.opposite() != direction{
+                sneko.direction = direction;
+            }
+        }
     }
     pub fn tick(&mut self){
         if self.number_of_alive_snekos() == 0 {
@@ -113,11 +112,11 @@ impl Game{
         //temporary
         
         //temporary
-        self.decrease_field_values();
+        self.decrease_grid_values();
         self.slither_alive_snekos();
         self.handle_movement();
         print! ("\x1B[2J\x1B[1;1H");
-        self.print_field();
+        self.print_grid();
     }
     fn number_of_alive_snekos(&self) -> usize{
         let mut result:usize = 0;
@@ -129,7 +128,7 @@ impl Game{
             let mut dies = false;
             match sneko.alive{
                 true => {
-                    let point = &mut self.field[sneko.coords.y][sneko.coords.x];
+                    let point = &mut self.grid[sneko.coords.y][sneko.coords.x];
                     match point{
                         Point::Empty=>{
                             *point = Point::Sneko(sneko.length)}
@@ -143,8 +142,8 @@ impl Game{
             if dies {sneko.alive = false}
         })  
     }
-    fn decrease_field_values(&mut self){
-        self.field.iter_mut().for_each(|row|{
+    fn decrease_grid_values(&mut self){
+        self.grid.iter_mut().for_each(|row|{
             row.iter_mut().for_each(|point|{
                 if let Point::Sneko(value) = point {
                     match value {
@@ -159,7 +158,7 @@ impl Game{
         self.snekos.iter_mut().for_each(|snek|{ 
             if snek.alive == false {return}
             snek.slither();
-            if snek.coords.x>=self.config.field_width || snek.coords.y>=self.config.field_heigth{    
+            if snek.coords.x>=self.config.grid_width || snek.coords.y>=self.config.grid_heigth{    
                 snek.alive = false;
             }
         })
@@ -168,17 +167,22 @@ impl Game{
         while self.fruits.len() < self.config.fruit_count{
             let mut rnd = rand::thread_rng();
             let rand_coords = Coords{
-                x: rnd.gen_range(0..self.config.field_width),
-                y: rnd.gen_range(0..self.config.field_heigth)
+                x: rnd.gen_range(0..self.config.grid_width),
+                y: rnd.gen_range(0..self.config.grid_heigth)
             };
-            if let Point::Fruit=self.field[rand_coords.y][rand_coords.x]{
+            if let Point::Fruit=self.grid[rand_coords.y][rand_coords.x]{
                 self.fruits.push(rand_coords)
             }
         }
         //nomnom
     }
-    pub fn add_player(&mut self,nickname:String,player_soket:String){
-        self.snekos.push(Sneko::new(nickname,player_soket))
+    pub fn add_player(&mut self,nickname:String) -> usize{
+        let mut id=0;
+        while true == self.snekos.iter().any(|sneko|sneko.player_id==id){
+            id+=1; 
+        }
+        self.snekos.push(Sneko::new(nickname,id));
+        id
     }
     pub fn remove_player(&self,nickname:String){
         
@@ -209,7 +213,7 @@ pub struct Coords {
 
 pub struct Sneko {
     nickname:String,
-    player_soket: String,
+    player_id: usize,
     pub coords: Coords,
     pub direction: Direction,
     pub body_cells: Vec<Coords>,
@@ -219,10 +223,10 @@ pub struct Sneko {
 }
 
 impl Sneko {
-    pub fn new(nickname:String,player_soket:String)-> Sneko{
+    pub fn new(nickname:String,player_id:usize)-> Sneko{
         Sneko {
             nickname,
-            player_soket,
+            player_id,
             coords: Coords{x:0,y:0}, 
             direction: Direction::Right,
             body_cells: vec![],//yet to implement
